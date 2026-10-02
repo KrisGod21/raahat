@@ -1,0 +1,10 @@
+{
+  "caveats": [
+    "Held-out block: Aug-Sep 2025, opened once after the model was frozen.",
+    "We still miss 64% of heavy-rain events -- 108 of 168 fall in the band where the model assigns under 12% probability.",
+    "Aggregated, the regime gate is within noise; it helps clearly only in low-pressure-system conditions.",
+    "Any cell with fewer than 30 events is reported as insufficient rather than given a number."
+  ],
+  "atlas_min_events": 30,
+  "atlas_note": "Cells with fewer than 30 heavy-rain events are marked insufficient and must be shown greyed, not filled in (spec 11.4)."
+}

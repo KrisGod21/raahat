@@ -20,6 +20,53 @@ import { Card, DOWN, UP } from './Panels'
 const n2 = (v: unknown, d = 3) =>
   typeof v === 'number' && isFinite(v) ? v.toFixed(d) : '—'
 
+/** Frozen reference views load from the CDN and fall back to the API locally. */
+function useReferenceData(asset: string, endpoint: string, requiredArray: string) {
+  const [data, setData] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    setData(null)
+    setError(null)
+    const read = async (url: string) => {
+      const controller = new AbortController()
+      const timer = window.setTimeout(() => controller.abort(), 12000)
+      try {
+        const response = await fetch(url, { signal: controller.signal })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const body = await response.json()
+        if (!Array.isArray(body?.[requiredArray]) || body[requiredArray].length === 0)
+          throw new Error('Missing reference data')
+        return body
+      } finally { window.clearTimeout(timer) }
+    }
+    ;(async () => {
+      try {
+        let result
+        try { result = await read(asset) }
+        catch { result = await read(endpoint) }
+        if (!cancelled) setData(result)
+      } catch {
+        if (!cancelled) setError('This reference view could not load. Check the connection and try again.')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [asset, endpoint, requiredArray, attempt])
+  return { data, error, retry: () => setAttempt((n) => n + 1) }
+}
+
+function ReferenceStatus({ error, retry }: { error: string | null; retry: () => void }) {
+  if (!error) return <p className="p-6 text-sm" style={{ color: 'var(--mist)' }}>Loading reference data…</p>
+  return (
+    <div className="panel m-3 max-w-lg p-5">
+      <h2 className="text-base font-semibold">Unable to load this view</h2>
+      <p className="my-2 text-sm" style={{ color: 'var(--slate)' }}>{error}</p>
+      <button className="btn px-3 py-1.5 text-sm" onClick={retry}>Try again</button>
+    </div>
+  )
+}
+
 /** Yellow is too light for white text; every other warning colour is not. */
 const onWarning = (c: number) => (c === 1 ? '#3A2B00' : '#FFFFFF')
 
@@ -197,15 +244,8 @@ export function TableScreen({ values, names, date, lead, layer, layerLabel }: {
 /* ----------------------------------------------------------- evidence --- */
 
 export function EvidenceScreen() {
-  const [data, setData] = useState<any>(null)
-  const [err, setErr] = useState<string | null>(null)
-  useEffect(() => {
-    fetch('/api/v1/verification').then((r) => r.json())
-      .then((d) => (d.error ? setErr(d.error.message) : setData(d)))
-      .catch(() => setErr('Could not load results.'))
-  }, [])
-  if (err) return <p className="p-6 text-sm" style={{ color: 'var(--slate)' }}>{err}</p>
-  if (!data) return <p className="p-6 text-sm" style={{ color: 'var(--mist)' }}>Loading…</p>
+  const { data, error, retry } = useReferenceData('/verification.json', '/api/v1/verification', 'scorecard')
+  if (!data) return <ReferenceStatus error={error} retry={retry} />
 
   const lead3 = (data.scorecard ?? []).filter((r: any) => r.lead === 3)
 
@@ -350,15 +390,8 @@ const shade = (v: number) => {
 }
 
 export function AtlasScreen() {
-  const [data, setData] = useState<any>(null)
-  const [err, setErr] = useState<string | null>(null)
-  useEffect(() => {
-    fetch('/api/v1/atlas').then((r) => r.json())
-      .then((d) => (d.error ? setErr(d.error.message) : setData(d)))
-      .catch(() => setErr('Could not load the atlas.'))
-  }, [])
-  if (err) return <p className="p-6 text-sm" style={{ color: 'var(--slate)' }}>{err}</p>
-  if (!data) return <p className="p-6 text-sm" style={{ color: 'var(--mist)' }}>Loading…</p>
+  const { data, error, retry } = useReferenceData('/atlas.json', '/api/v1/atlas', 'cells')
+  if (!data) return <ReferenceStatus error={error} retry={retry} />
 
   const cells = (data.cells ?? []).filter((c: any) => c.lead_day === 3)
   const regimes = [...new Set(cells.map((c: any) => c.regime))] as string[]
@@ -440,9 +473,8 @@ export function AtlasScreen() {
 /* -------------------------------------------------------------- about --- */
 
 export function AboutScreen() {
-  const [data, setData] = useState<any>(null)
-  useEffect(() => { fetch('/api/v1/about').then((r) => r.json()).then(setData).catch(() => {}) }, [])
-  if (!data) return <p className="p-6 text-sm" style={{ color: 'var(--mist)' }}>Loading…</p>
+  const { data, error, retry } = useReferenceData('/about.json', '/api/v1/about', 'sources')
+  if (!data) return <ReferenceStatus error={error} retry={retry} />
   return (
     <div className="space-y-3 p-3">
       <Card panel tone="teal" title="Where the data comes from">

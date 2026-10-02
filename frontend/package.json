@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/build-static-assets.mjs",
     "dev": "vite",
-    "prebuild": "node scripts/copy-districts.mjs",
+    "prebuild": "node scripts/build-static-assets.mjs",
     "build": "tsc -b --noCheck && vite build",
     "preview": "vite preview"
   },

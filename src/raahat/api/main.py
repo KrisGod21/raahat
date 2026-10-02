@@ -338,6 +338,7 @@ def verification():
         return pd.read_csv(f).to_dict("records") if f.exists() else []
 
     manifest = {}
+    meta = json.loads((final / "reference_meta.json").read_text(encoding="utf-8"))
     mf = final / "MANIFEST.json"
     if mf.exists():
         m = json.loads(mf.read_text(encoding="utf-8"))
@@ -353,15 +354,7 @@ def verification():
         "per_regime": csv("per_regime_csi_test.csv"),
         "reliability": csv("reliability_test.csv"),
         "manifest": manifest,
-        "caveats": [
-            "Held-out block: Aug-Sep 2025, opened once after the model was frozen.",
-            "We still miss 64% of heavy-rain events -- 108 of 168 fall in the band "
-            "where the model assigns under 12% probability.",
-            "Aggregated, the regime gate is within noise; it helps clearly only in "
-            "low-pressure-system conditions.",
-            "Any cell with fewer than 30 events is reported as insufficient rather "
-            "than given a number.",
-        ],
+        "caveats": meta["caveats"],
     })
 
 
@@ -377,55 +370,22 @@ def atlas():
     if not f.exists():
         fail("no_results", "Run scripts/final_eval.py first.", 503)
     df = pd.read_csv(f)
+    import json
+    meta = json.loads((final / "reference_meta.json").read_text(encoding="utf-8"))
     return _clean({
         "cells": df.to_dict("records"),
-        "min_events": 30,
-        "note": "Cells with fewer than 30 heavy-rain events are marked insufficient "
-                "and must be shown greyed, not filled in (spec 11.4).",
+        "min_events": meta["atlas_min_events"],
+        "note": meta["atlas_note"],
     })
 
 
 @app.get(f"{API}/about")
 def about():
     """Data provenance (spec 9.4 screen 5). Pre-empts half the judge questions."""
-    return _clean({
-        "sources": [
-            {"what": "Observed rainfall (ground truth)",
-             "source": "India Meteorological Department, Pune",
-             "detail": "0.25 degree gauge-based gridded daily rainfall, 2010-2025",
-             "licence": "Free, no account"},
-            {"what": "Forecasts", "source": "ECMWF IFS025 + ICON via Open-Meteo",
-             "detail": "Archived past forecasts at fixed lead times, 1-5 days",
-             "licence": "CC BY 4.0, no API key"},
-            {"what": "Pressure fields", "source": "ERA5 via Open-Meteo",
-             "detail": "Mean sea-level pressure, used to detect closed lows",
-             "licence": "CC BY 4.0"},
-            {"what": "District boundaries", "source": "Datameet, Census 2011",
-             "detail": "641 districts; simplified to 1.1 MB for the web",
-             "licence": "ODbL"},
-        ],
-        "sample_size": {
-            "districts_modelled": 197, "districts_mapped": 641,
-            "seasons": "JJAS 2024 and 2025",
-            "district_days_per_lead": 24034,
-            "heavy_rain_events_test": 168,
-            "heavy_rain_rate": "1.5-1.8% of district-days exceed 64.5 mm",
-        },
-        "not_used": [
-            {"what": "GFS forecasts",
-             "why": "Its archive collapses on exactly the heavy-rain windows this "
-                    "project targets -- lead-3 totals fell to 4% of the analysis on "
-                    "both extreme cases tested."},
-            {"what": "IMD warning archive",
-             "why": "Requires a registration on IMD's public API that has not been "
-                    "completed, so there is no archive to benchmark against."},
-            {"what": "Upper-atmosphere fields",
-             "why": "Open-Meteo returns all-null for every pressure-level variable, "
-                    "so Western Disturbance and easterly/coastal regimes cannot be "
-                    "detected and are reported as zero."},
-        ],
-        "attribution": ATTRIBUTION,
-    })
+    import json
+
+    source = C.DATA_DIR / "static" / "about.json"
+    return _clean(json.loads(source.read_text(encoding="utf-8")))
 
 
 @app.get(f"{API}/imd-benchmark")

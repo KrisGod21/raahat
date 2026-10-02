@@ -177,6 +177,11 @@ The frontend build copies `data/static/districts_simplified.geojson` to
 and falls back to `/api/v1/districts` during local development or if the static
 asset is unavailable.
 
+The same prebuild step generates `atlas.json` and `verification.json` from the
+frozen CSVs in `results/final/`, and copies `data/static/about.json`. These three
+reference screens load the static assets first and fall back to the equivalent
+API endpoints. The build fails if any required source file is missing.
+
 ---
 
 ## The alternative worth considering

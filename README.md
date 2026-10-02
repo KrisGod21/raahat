@@ -22,7 +22,7 @@ Open `http://localhost:5173`. On PowerShell, set `$env:PYTHONPATH="src"` before 
 
 ## Deploy on Vercel
 
-Import this GitHub repository into Vercel with the root directory set to `/`. The root `vercel.json` builds the Vite frontend, serves `api/index.py` as a Python function, and routes `/api/v1/*` to the API. The frontend build copies the simplified district GeoJSON into its public assets, so the map loads from the CDN.
+Import this GitHub repository into Vercel with the root directory set to `/`. The root `vercel.json` builds the Vite frontend, serves `api/index.py` as a Python function, and routes `/api/v1/*` to the API. The frontend build copies the simplified district GeoJSON and generates the frozen Atlas and Evidence views as public assets, so those views load without an API cold start. About the data uses the same provenance JSON as the API.
 
 The API reads checked-in, precomputed Parquet files. Rebuild those files locally when model data changes; the deployment does not run training or ingest jobs. See [deployment details](docs/DEPLOY_VERCEL.md) for the function size and runtime constraints.
 
