@@ -1,0 +1,98 @@
+# Hyperparameters. Every value here is traceable to a section of the spec.
+seed: 42
+
+# Spec 7.1 wants train 2024 / validation 2025 / test 2026, by WHOLE season.
+# IMD has not published 2026 -- that season was still running on 2026-09-21,
+# and imdpune.gov.in returns a zero-byte file for it. See docs/DATA_NOTES.md.
+#
+# So: two usable seasons. All of JJAS 2024 trains (Stage A is sample-starved
+# and needs every day it can get); JJAS 2025 is cut ONCE into a validation
+# block and a test block. The cut is contiguous, so only the single adjacent
+# day-pair straddles it -- negligible against the ~10-day synoptic
+# decorrelation of spec 4.11. Aug-Sep is the LPS-rich half, which is where the
+# heavy-rain claim actually has to hold up.
+#
+# KNOWN CAVEAT, belongs on the honest-limits slide: validation and test are not
+# exchangeable. Calibration fitted on Jun-Jul climatology may not transfer
+# perfectly to Aug-Sep. Re-split into whole seasons once IMD publishes 2026.
+splits:
+  train:
+    - {season: 2024, start: "2024-06-01", end: "2024-09-30"}
+  validation:
+    - {season: 2025, start: "2025-06-01", end: "2025-07-31"}
+  test:
+    - {season: 2025, start: "2025-08-01", end: "2025-09-30"}
+  lead_days: [1, 2, 3, 4, 5]
+
+# --------------------------------------------------- STAGE A (spec 6.1) ---
+# DEVIATION FROM SPEC -- see docs/DATA_NOTES.md 2026-09-21.
+# Spec 6.1 gives n_estimators=600, num_leaves=63, min_child_samples=100.
+# Those are sized for the district-level table (~275k rows). Stage A is a
+# NATIONAL model: one row per (valid_date, lead_day), so one JJAS season is
+# 122 rows per lead. min_child_samples=100 makes every split illegal and the
+# classifier collapses to the majority class. Values below are sized for the
+# actual sample. Revisit if the 2021-2023 Historical Forecast API rows land,
+# which would take lead-1 to ~730.
+regime_clf:
+  objective: multiclass
+  num_class: 6
+  n_estimators: 300
+  learning_rate: 0.05
+  num_leaves: 8
+  min_child_samples: 5
+  min_split_gain: 0.0
+  subsample: 0.9
+  colsample_bytree: 0.8
+  class_weight: balanced
+  random_state: 42
+  per_lead_model: true           # 5 small models, one per lead day
+  calibration: isotonic          # fitted on the VALIDATION season only
+  # spec 5.7 leakage canary: accuracy must decay with lead time
+  leakage_canary_max_ratio: 0.95 # fail the build if acc(day5)/acc(day1) > this
+
+# --------------------------------- STAGE B, LEVEL 1 (spec 6.2, week 3) ---
+corrector_lgbm:
+  quantiles: [0.1, 0.5, 0.9]
+  thresholds: [64.5, 115.6, 204.5]
+  n_estimators: 800
+  learning_rate: 0.05
+  num_leaves: 63
+  min_child_samples: 50
+  subsample: 0.8
+  colsample_bytree: 0.8
+  random_state: 42
+  sample_weight: "1 + log1p(obs_rain_mm)"   # spec 7.3 -- do NOT oversample
+
+# --------------------------------- STAGE B, LEVEL 2 (spec 6.2, week 6) ---
+csgd_moe:
+  trunk_hidden: [128, 64]
+  district_embedding_dim: 16
+  n_experts: 6
+  activation: gelu
+  crps_grid: {lo: 0.0, hi: 500.0, n: 501}   # 1 mm spacing
+  delta_bound: [-40.0, 0.0]                  # bounded shift; <=0 gives the
+                                             # point mass at zero rainfall
+  lr: 0.001
+  batch_size: 512
+  max_epochs: 60
+  early_stopping_patience: 8
+  gate_init_from_classifier: true
+  gate_kl_freeze_threshold: 0.5   # freeze the gate if it drifts from the
+                                  # classifier by more than this (spec 6.2)
+  # See docs/DATA_NOTES.md 2026-09-21: torch cannot differentiate igamma
+  # w.r.t. shape. cdf_backend selects the workaround.
+  cdf_backend: series             # series | rsample
+
+# ------------------------------------------------ DECISION (spec 6.4) ---
+decision:
+  # Spec 6.4 suggests 0.30. MEASURED on JJAS 2025 validation, lead 3, 188
+  # events: 0.30 gives CSI 0.073, WORSE than raw ECMWF (0.102). The optimum is
+  # 0.10-0.15 -- at 0.15 the model beats raw on POD *and* FAR simultaneously
+  # (0.223/0.732 vs 0.176/0.806). 0.30 is too high a bar for a ~1.5% base rate
+  # and sits on the false-alarm-averse side, an odd posture for disaster
+  # management. See docs/DATA_NOTES.md item 19.
+  alpha_default: 0.15             # cost/loss ratio; miss-averse posture
+  alpha_ui_range: [0.05, 0.60]
+  safety_guard: true              # never assign a colour below the raw MME's
+  safety_guard_release: 0.5       # ...unless P(exceed) < alpha * this
+  hysteresis_steps: 1

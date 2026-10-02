@@ -1,0 +1,46 @@
+# Canonical regime taxonomy. Order here is THE order everywhere:
+# probability vectors, model outputs, parquet columns. Never reorder.
+regimes:
+  - name: ACTIVE
+    label: Active monsoon spell
+    description: Standardised CMZ rainfall anomaly > +1 sustained 3+ days.
+  - name: BREAK
+    label: Break monsoon
+    description: Standardised CMZ rainfall anomaly < -1 sustained 3+ days.
+  - name: LPS
+    label: Low-pressure system / depression
+    description: Closed cyclonic circulation tracked over land or adjacent seas.
+  - name: WD
+    label: Western Disturbance
+    description: Extratropical trough in the subtropical westerlies over N India.
+  - name: EASTERLY_COASTAL
+    label: Easterly / coastal regime
+    description: Onshore easterly flow regime, predominantly east coast.
+  - name: WEAK_TRANSITION
+    label: Weak / transitional
+    description: No dominant synoptic signature. The residual class.
+
+# Active/break index (Rajeevan, Gadgil & Bhate 2010)
+core_monsoon_zone:
+  lat_min: 18.0
+  lat_max: 28.0
+  lon_min: 65.0
+  lon_max: 88.0
+active_break:
+  threshold: 1.0          # sigma; config/sensitivity option is 0.5 (spec 4.5)
+  min_persistence_days: 3
+  climatology_years: [1981, 2020]
+  smoothing_window_days: 5
+
+# IMD operational thresholds, mm / 24 h (spec 6.4)
+thresholds:
+  heavy: 64.5
+  very_heavy: 115.6
+  extremely_heavy: 204.5
+
+# IMD mandated warning colours. The ONLY saturated colours in the UI.
+colours:
+  0: {name: GREEN,  hex: "#1B8A3F", action: "No warning"}
+  1: {name: YELLOW, hex: "#F2C200", action: "Be updated"}
+  2: {name: ORANGE, hex: "#F07C00", action: "Be prepared"}
+  3: {name: RED,    hex: "#D31F26", action: "Take action"}

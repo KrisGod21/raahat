@@ -1,0 +1,122 @@
+# Level-1 zones (spec 2.3), chosen for regime contrast, not convenience.
+#
+# Names below must match the DISTRICT / ST_NM fields of the Datameet Census
+# 2011 boundary set exactly. scripts/build_districts.py logs every name that
+# fails to match -- spec 4.6 forbids silent fuzzy matching.
+#
+# CAVEAT (spec 4.6): this is the CENSUS 2011 district list. Telangana does not
+# exist in it -- its districts still sit under Andhra Pradesh. Districts
+# created after 2011 are absent. That is acceptable BECAUSE the master table is
+# frozen and never changes; it is recorded in docs/DATA_NOTES.md and belongs on
+# the "honest limits" slide.
+
+zones:
+  W:
+    label: West coast orographic
+    regimes_exercised: [ACTIVE, EASTERLY_COASTAL]
+    note: Active monsoon + strong orographic modifier; offshore vortices.
+    whole_states: [Kerala, Goa]
+    districts:
+      # Konkan
+      Maharashtra: [Mumbai, Mumbai Suburban, Thane, Raigarh, Ratnagiri, Sindhudurg,
+                    # Madhya Maharashtra
+                    Pune, Satara, Sangli, Kolhapur, Solapur, Ahmadnagar,
+                    Nashik, Dhule, Nandurbar, Jalgaon]
+      # Coastal Karnataka + Western Ghats crest
+      Karnataka: [Uttara Kannada, Udupi, Dakshina Kannada, Kodagu,
+                  Chikmagalur, Shimoga, Hassan]
+
+  C:
+    label: LPS corridor / core monsoon zone
+    regimes_exercised: [LPS, ACTIVE, BREAK]
+    note: Depression tracks, active/break contrast.
+    whole_states: [Chhattisgarh, Odisha]
+    districts:
+      # Vidarbha
+      Maharashtra: [Nagpur, Wardha, Bhandara, Gondiya, Chandrapur, Garhchiroli,   # 'Gadchiroli' in modern usage
+                    Amravati, Akola, Washim, Buldana, Yavatmal]
+      # NOTE: Census 2011 spells these as shown, not as commonly written
+      # Telangana -- still filed under Andhra Pradesh in Census 2011
+      Andhra Pradesh: [Adilabad, Nizamabad, Karimnagar, Medak, Hyderabad,
+                       Rangareddy, Mahbubnagar, Nalgonda, Warangal, Khammam]
+
+  N:
+    label: Western Disturbance interaction belt
+    regimes_exercised: [WD, ACTIVE]
+    note: WD x monsoon-trough interaction, extreme orography.
+    whole_states: [Himachal Pradesh, Uttarakhand, Punjab, Haryana]
+    districts:
+      # West Uttar Pradesh
+      Uttar Pradesh: [Saharanpur, Muzaffarnagar, Bijnor, Moradabad, Rampur,
+                      Meerut, Baghpat, Ghaziabad, Gautam Buddha Nagar,
+                      Bulandshahr, Aligarh, Mathura, Agra, Firozabad, Etah,
+                      Mainpuri, Budaun, Bareilly, Pilibhit, Shahjahanpur,
+                      Jyotiba Phule Nagar,
+                      Mahamaya Nagar,   # = Hathras (2011 name)
+                      Kansiram Nagar]   # note spelling: one 'h'
+
+# --------------------------------------------------------------------------
+# ALL-INDIA EXTENSION (2026-09-24). The three Level-1 zones above are spec
+# 2.3's regime-contrast set and their membership is UNCHANGED -- every one of
+# the original 197 districts keeps its zone and its district_id.
+#
+# These five cover the rest of the country so the Regime Error Atlas has
+# meaningful rows instead of one 444-district bucket called "X". They follow
+# IMD's broad homogeneous regions rather than being invented: central India,
+# the Gangetic plain, the arid north-west, the peninsular interior, and the
+# north-east. Islands are separated because their rainfall regime shares
+# nothing with the mainland and would pollute any zone they joined.
+  CI:
+    label: Central India
+    regimes_exercised: [LPS, ACTIVE, BREAK]
+    note: LPS track continuation west of the core corridor.
+    whole_states: [Madhya Pradesh, Jharkhand, Maharashtra, Uttar Pradesh]
+    # Maharashtra and UP appear here as whole states only to catch whatever the
+    # Level-1 zones did not already claim -- first-assignment-wins means Konkan,
+    # Madhya Maharashtra, Vidarbha and west UP keep their original zones.
+    districts: {}
+
+  GP:
+    label: Gangetic plain
+    regimes_exercised: [ACTIVE, BREAK, LPS]
+    note: Monsoon trough belt; break spells shift rain here.
+    whole_states: [Bihar, West Bengal]
+    # Eastern UP is Gangetic plain; the western districts are already in N
+    # and first-assignment-wins keeps them there.
+    districts:
+      Uttar Pradesh: []
+
+  NW:
+    label: North-west arid and semi-arid
+    regimes_exercised: [WD, BREAK]
+    note: Thar heat low; WD influence in the north.
+    whole_states: [Rajasthan, Gujarat, "Jammu & Kashmir", NCT of Delhi, Chandigarh,
+                   "Daman & Diu", "Dadara & Nagar Havelli"]
+    districts: {}
+
+  PI:
+    label: Peninsular interior and east coast
+    regimes_exercised: [EASTERLY_COASTAL, ACTIVE]
+    note: Rain-shadow interior plus the east-coast easterly regime.
+    whole_states: [Tamil Nadu, Andhra Pradesh, Karnataka, Puducherry]
+    districts: {}
+
+  NE:
+    label: North-east
+    regimes_exercised: [ACTIVE]
+    note: Wettest region in the country; orography dominates.
+    whole_states: [Assam, "Arunanchal Pradesh", Nagaland, Manipur, Mizoram,
+                   Meghalaya, Sikkim, Tripura]
+    districts: {}
+
+  IS:
+    label: Islands
+    regimes_exercised: [EASTERLY_COASTAL]
+    note: Kept separate -- island rainfall shares no regime structure with the
+      mainland and would distort any zone it joined.
+    whole_states: ["Andaman & Nicobar Island", Lakshadweep]
+    districts: {}
+
+# Core monsoon zone box for the active/break index (spec 4.5). Repeated from
+# regimes.yaml for convenience; regimes.yaml is authoritative.
+cmz_box: {lat: [18.0, 28.0], lon: [65.0, 88.0]}

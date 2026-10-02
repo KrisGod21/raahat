@@ -1,0 +1,27 @@
+# Local tooling and build outputs
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.npm-cache/
+.runtime-python/
+node_modules/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+frontend/public/districts.geojson
+.vercel/
+
+# Local secrets and generated inputs
+.env
+.env.*
+!.env.example
+data/raw/
+data/interim/
+data/static/districts.geojson
+models/
+artifacts/
+runs/
+RF25_ind*.nc

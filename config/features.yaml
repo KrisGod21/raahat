@@ -1,0 +1,138 @@
+# THE canonical feature list. contract.py reads this file; nothing hard-codes
+# a feature name anywhere else. Adding a feature means editing this file.
+#
+# NOTE (clarifies spec 5.3 / 13.1): the regime classifier is a NATIONAL model.
+# It consumes one row per (valid_date, lead_day) built from the synoptic mesh,
+# NOT one row per district. Its six output probabilities are then broadcast to
+# every district for that date/lead and become Stage-B features. Training Stage
+# A on district-replicated rows would inflate the apparent sample size ~750x.
+
+# ---------------------------------------------------------------- STAGE A ---
+# Regime classifier inputs. Built from the 2-deg forecast mesh (spec 4.3),
+# summarised over the named boxes below. One row per (valid_date, lead_day).
+stage_a:
+  boxes:
+    cmz:        {lat: [18.0, 28.0], lon: [65.0, 88.0]}   # core monsoon zone
+    bay:        {lat: [10.0, 22.0], lon: [82.0, 95.0]}
+    arabian:    {lat: [ 8.0, 20.0], lon: [60.0, 75.0]}
+    land_c:     {lat: [15.0, 25.0], lon: [75.0, 88.0]}
+    nw:         {lat: [28.0, 37.0], lon: [70.0, 82.0]}   # WD / Himalaya belt
+    eastcoast:  {lat: [10.0, 20.0], lon: [78.0, 86.0]}
+    westcoast:  {lat: [ 8.0, 20.0], lon: [72.0, 78.0]}
+
+  features:
+    # NOTE: this list was rewritten on 2026-09-21. No free upper-air field is
+    # reachable (docs/DATA_NOTES.md item 16), so every feature below is
+    # derivable from SURFACE fields the Previous Runs API serves at lead time:
+    # precipitation, pressure_msl, temperature_2m, u10/v10, relative_humidity_2m.
+    # That is a real operational constraint, not a shortcut -- these are the
+    # fields a forecast actually publishes.
+
+    # active / break signature (the published index, spec 4.5)
+    - cmz_rain_anom_fcst
+    - cmz_rain_anom_fcst_3day
+    - cmz_rain_fcst
+    # surface-pressure structure
+    - cmz_mslp_anom
+    - mslp_anom_nw
+    - mslp_min_anom_bay
+    - mslp_min_anom_land_c
+    - mslp_grad_max
+    - monsoon_trough_lat
+    # closed-low detection (replaces 850 hPa vorticity; see labels/lps_detector)
+    - lps_deficit_hpa
+    - lps_strength
+    - lps_lat
+    - lps_lon
+    - n_lows
+    # low-level flow, from 10 m wind
+    - u10_cmz_mean
+    - v10_cmz_mean
+    - wspd10_cmz_mean
+    - u10_eastcoast_mean
+    - u10_westcoast_mean
+    - vort10_max_bay
+    - vort10_max_land_c
+    # moisture and thermal structure
+    - rh2m_national_mean
+    - rh2m_cmz_mean
+    - t2m_anom_nw
+    - t2m_anom_cmz
+    # regional rainfall pattern
+    - rain_max_bay
+    - rain_max_westcoast
+    - rain_max_eastcoast
+    - rain_mean_nw
+    # calendar
+    - doy_sin
+    - doy_cos
+    - days_since_onset_national
+
+# ---------------------------------------------------------------- STAGE B ---
+# Rainfall corrector inputs, one row per (district_id, valid_date, lead_day).
+stage_b:
+  # GFS dropped: its previous-runs archive collapses on heavy-rain
+  # windows (ratio 0.04). See docs/DATA_NOTES.md item 11.
+  nwp_models: [ifs, icon]
+
+  # expanded per model as pr_{model}_{suffix}; bare `pr_{model}` also emitted
+  per_model_suffixes: [nbr_mean, nbr_max, nbr_p90, grad, prev_day, 3day_sum]
+
+  multi_model:
+    - mm_mean
+    - mm_median
+    - mm_spread
+    - mm_range
+    - mm_pop
+    - mm_agree_heavy
+  ensemble:            # nullable; ECMWF ENS only, Level 2
+    - ens_sd
+    - ens_p90
+    - ens_p99
+
+  regime:              # produced by Stage A, broadcast to districts
+    - p_ACTIVE
+    - p_BREAK
+    - p_LPS
+    - p_WD
+    - p_EASTERLY_COASTAL
+    - p_WEAK
+    - regime_entropy
+    - p_LPS_trend
+
+  synoptic:            # interpolated from the forecast mesh to the district
+    - vort850_max_300km
+    - vort850_dist_km
+    - vort850_bearing
+    - mslp_anom
+    - u850
+    - v850
+    - wspd850
+    - shear_u
+    - rh850
+    - ivt_mag
+    - ivt_dir
+    - z500_anom
+    - cmz_rain_anom_fcst
+
+  terrain:
+    - orog_exposure
+    - upslope_flux
+    - coast_onshore_flux
+    - dist_to_coast_km
+    - mean_elev
+    - elev_range
+
+  calendar:
+    - doy_sin
+    - doy_cos
+    - clim_mean_district_doy
+    - clim_p90_district_doy
+    - clim_p99_district_doy
+    - days_since_local_onset
+
+  categorical: [district_id, zone_code, lead_day]
+
+# Monotonicity constraints for the Level-1 corrector (spec 6.2).
+# More forecast rain must never yield less corrected rain.
+monotone_increasing: [mm_mean, pr_ifs_nbr_max]

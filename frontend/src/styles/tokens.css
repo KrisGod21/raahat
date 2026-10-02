@@ -1,0 +1,364 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * COLOUR POLICY
+ *
+ * Spec 9.2 mandates the four IMD warning colours and says they must be the
+ * ONLY saturated colours -- so that when a district turns red, it is the only
+ * red thing on screen. That rule is kept exactly where it earns its keep: on
+ * the choropleth, in the map legend, and on the warning pills that restate it.
+ *
+ * It is NOT applied to the application chrome. A forecast desk rendered
+ * entirely in white and six greys looks unfinished rather than disciplined,
+ * and the header, tabs, panels and tables are not warning state -- nothing in
+ * them can be misread as a district alert. Those use a deep "monsoon indigo"
+ * chrome and a cool accent family, chosen specifically because no member of it
+ * can be mistaken for green / yellow / orange / red at a glance.
+ *
+ * One warm colour exists: --amber. It is the over-forecast end of the Regime
+ * Error Atlas ramp and the tone for caveat panels. It is deliberately dark and
+ * desaturated (#A9600F, a brown) so that it cannot read as IMD orange
+ * (#F07C00, a bright orange). They are never adjacent.
+ */
+:root {
+  /* neutrals, slightly cool so the warning colours read warm against them */
+  --ink:    #10151C;
+  --slate:  #44505F;
+  --mist:   #7B8A9E;
+  --paper:  #EEF2F8;
+  --card:   #FFFFFF;
+  --rule:   #DCE3EC;
+  --sunk:   #E7EDF5;
+
+  /* application chrome -- deep monsoon indigo, header / tabs / footer */
+  --brand-950: #0A0F2B;
+  --brand-900: #121A40;
+  --brand-800: #1C2758;
+  --brand-700: #2A3A85;
+  --on-brand:     #EEF1FC;
+  --on-brand-dim: #97A3CE;
+
+  /* policy colours -- warning state ONLY, never decoration */
+  --green:  #1B8A3F;
+  --yellow: #F2C200;
+  --orange: #F07C00;
+  --red:    #D31F26;
+
+  /* accent family -- everything that is not warning state */
+  --accent:      #3358E8;
+  --accent-deep: #1E3C9E;
+  --accent-soft: #E9EEFD;
+  --accent-line: #C2D0F8;
+  --accent-lift: #7FA6FF;   /* on dark chrome only */
+
+  --teal:        #0E8F8F;
+  --teal-soft:   #E1F4F3;
+  --violet:      #6B4EC7;
+  --violet-soft: #EFEAFB;
+  --cyan:        #1B87C9;
+  --cyan-soft:   #E3F2FB;
+
+  /* the single warm colour; see note above */
+  --amber:       #A9600F;
+  --amber-soft:  #FBF1E2;
+  --amber-line:  #EAD6B6;
+}
+
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+  /* NOTE: do not set font-feature-settings here. Enabling Inter's stylistic
+     sets (ss01/cv05) made hyphens render with space around them --
+     "Regime - aware", "Open - Meteo.com". Tabular figures are requested
+     via font-variant-numeric below, which is what we actually need. */
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  /* NOT optimizeLegibility: it forces extra kerning/ligature work and in
+     this renderer drew hyphens with space around them -- "Regime - aware",
+     "Low - pressure". The DOM text was correct throughout; only the
+     painting was wrong, which made it a confusing bug to chase. */
+
+  /* Two very wide, very pale washes rather than a flat grey. They sit at the
+     top corners where content is sparse, so text never crosses a gradient. */
+  background:
+    radial-gradient(1100px 460px at 12% -12%, #E3EAFA 0%, rgba(227,234,250,0) 62%),
+    radial-gradient(900px 400px at 92% -8%,  #DFF1F0 0%, rgba(223,241,240,0) 58%),
+    var(--paper);
+  /* NOT background-attachment: fixed. Body never scrolls here (the panes
+     scroll individually), so it buys nothing, and a fixed background is a
+     known compositing hazard -- mid-scroll the pane painted frames where
+     the wash had not been drawn yet. */
+}
+
+.num { font-variant-numeric: tabular-nums; }
+.display {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* Spec 9.2: ONE orchestrated moment. The choropleth cross-fades when the lead
+   changes. Nothing else animates. Hover and focus feedback is not animation
+   in that sense -- it is the control acknowledging the pointer. */
+.crossfade { transition: opacity 220ms ease; }
+
+/* ---- surfaces ---------------------------------------------------------- */
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(16, 21, 28, .05),
+              0 10px 24px -18px rgba(16, 21, 28, .22);
+  overflow: hidden;
+}
+.panel-head {
+  border-bottom: 1px solid var(--rule);
+  padding: 9px 14px;
+}
+/* restrained depth -- a hairline plus a whisper of shadow, not a card stack */
+.raised {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  box-shadow: 0 1px 2px rgba(16, 21, 28, 0.04);
+}
+
+/* ---- chips ------------------------------------------------------------- */
+
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: 999px; padding: 1px 9px;
+  font-size: 11px; font-weight: 600; line-height: 18px;
+  white-space: nowrap;
+}
+
+/* ---- controls ---------------------------------------------------------- */
+
+.seg { border: 1px solid var(--rule); border-radius: 7px; overflow: hidden; background: var(--card); }
+.seg button { transition: background-color 120ms ease, color 120ms ease; }
+.seg button:hover:not(.on) { background: var(--sunk); color: var(--accent-deep); }
+
+.tab { transition: color 120ms ease, background-color 120ms ease; }
+.tab:hover:not(.on) { color: var(--on-brand); background: rgba(255,255,255,.07); }
+
+.btn {
+  border: 1px solid var(--accent-line); border-radius: 7px;
+  background: var(--accent-soft); color: var(--accent-deep);
+  font-weight: 600;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.btn:hover { background: #DCE5FC; border-color: var(--accent); }
+
+.field {
+  border: 1px solid var(--rule); border-radius: 7px; background: var(--card);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.field:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+input[type=range] { accent-color: var(--accent); height: 18px; }
+input[type=checkbox] { accent-color: var(--accent); }
+
+:where(button, input, select, a):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 5px;
+}
+
+/* ---- data tables ------------------------------------------------------- */
+
+.grid-table thead th {
+  background: linear-gradient(var(--card), #F5F8FD);
+  border-bottom: 1px solid var(--accent-line);
+  color: var(--slate); font-weight: 600; font-size: 12px;
+}
+.grid-table tbody tr { border-bottom: 1px solid var(--rule); }
+.grid-table tbody tr:nth-child(even) { background: #FAFCFF; }
+.grid-table tbody tr:hover { background: var(--accent-soft); }
+.grid-table tbody tr:last-child { border-bottom: 0; }
+
+/* ---- map furniture ----------------------------------------------------- */
+
+.maplibregl-ctrl-attrib { font-size: 10px; }
+.maplibregl-ctrl-group { box-shadow: 0 1px 3px rgba(16,21,28,.12) !important; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #C4D0E2; border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #A9B8CF; background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Forecast desk: a calm canvas around high-priority warning data. */
+.app-shell { min-height: 0; overflow: hidden; }
+.masthead {
+  position: relative;
+  z-index: 3;
+  color: #fff;
+  background:
+    radial-gradient(680px 260px at 78% -65%, rgba(61,112,204,.36), transparent 75%),
+    radial-gradient(480px 300px at 8% 115%, rgba(30,99,157,.22), transparent 70%),
+    linear-gradient(112deg, #071329, #0c1c38 58%, #0a2341);
+  box-shadow: 0 8px 28px rgba(8,24,48,.13);
+}
+.masthead::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .28;
+  background-image: linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(90deg, transparent 32%, #000);
+}
+.masthead-main, .app-nav { position: relative; z-index: 1; }
+.masthead-main { min-height: 78px; padding: 12px clamp(18px, 2.5vw, 40px); }
+.brand-lockup { min-width: 280px; }
+.brand-mark {
+  display: grid; place-items: center; width: 42px; height: 42px;
+  border: 1px solid rgba(177,213,255,.32); border-radius: 13px;
+  background: linear-gradient(145deg, rgba(179,222,255,.18), rgba(74,120,211,.07));
+  box-shadow: inset 0 1px rgba(255,255,255,.15), 0 8px 18px rgba(0,0,0,.14);
+}
+.brand-mark svg { width: 20px; height: 25px; filter: drop-shadow(0 3px 6px rgba(91,175,255,.45)); }
+.brand-name { display: block; font-size: 23px; line-height: 1; font-weight: 800; letter-spacing: .095em; }
+.brand-period { color: #91c8ed; }
+.brand-subtitle { display: block; margin-top: 4px; color: #94abc8; font-size: 10px; letter-spacing: .065em; text-transform: uppercase; }
+.archive-status {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 31px;
+  padding: 5px 10px; border: 1px solid rgba(165,207,237,.22); border-radius: 999px;
+  color: #dce9f6; background: rgba(170,212,244,.08); font-size: 11px; font-weight: 600;
+}
+.status-pulse { width: 7px; height: 7px; flex: none; border-radius: 50%; background: #8cc6e9; box-shadow: 0 0 0 4px rgba(140,198,233,.12); }
+.status-date { color: #fff; font-variant-numeric: tabular-nums; }
+.status-qualifier { margin-left: 3px; padding-left: 9px; border-left: 1px solid rgba(255,255,255,.2); color: #8faac7; font-weight: 400; }
+.warning-summary-label { margin-right: 4px; color: #8faac7; font-size: 10px; font-weight: 700; letter-spacing: .11em; white-space: nowrap; }
+.warning-count {
+  display: inline-flex; align-items: center; gap: 7px; min-width: 49px; justify-content: center;
+  padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  box-shadow: inset 0 1px rgba(255,255,255,.08);
+}
+.app-nav { gap: 5px; padding: 0 clamp(16px, 2.5vw, 40px); border-top: 1px solid rgba(178,211,242,.11); }
+.app-nav .tab {
+  position: relative; border-radius: 0; padding: 11px 16px 12px;
+  letter-spacing: .015em; transition: color .18s ease, background-color .18s ease;
+}
+.app-nav .tab.on { background: rgba(178,219,255,.09) !important; box-shadow: inset 0 -3px 0 #8bc5ed !important; }
+.app-nav .tab:hover:not(.on) { background: rgba(178,219,255,.06); }
+.control-deck {
+  z-index: 2; position: relative; min-height: 64px; padding: 10px clamp(18px, 2.5vw, 40px);
+  border-bottom: 1px solid #dbe5ee; background: #f9fbfe;
+  box-shadow: 0 5px 16px rgba(19,45,76,.045);
+}
+.control-group > span:first-child { font-size: 10px !important; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #667c93 !important; }
+.control-deck .seg { border-color: #d9e4f0; border-radius: 9px; box-shadow: 0 1px 2px rgba(25,52,83,.05); }
+.control-deck .seg button { min-height: 29px; }
+.control-deck .seg button.on { background: #194b7b !important; color: #fff !important; }
+.control-deck .chip { padding: 3px 9px; }
+.control-deck input[type=range] { accent-color: #1d669e; cursor: pointer; }
+.play-control {
+  display: grid; place-items: center; width: 29px; height: 29px; flex: none;
+  border: 1px solid #b8d1e5; border-radius: 8px; background: #e4f2fb; color: #165583;
+  font-size: 11px; transition: transform .18s, background-color .18s;
+}
+.play-control:hover:not(:disabled) { transform: translateY(-2px); background: #d3eaff; }
+.play-control:disabled { opacity: .45; }
+.layer-control { margin-left: auto; }
+.workspace { background: #eaf1f6; }
+.map-stage { position: relative; min-height: 0; padding: 14px 0 14px 14px; }
+.map-canvas {
+  isolation: isolate; overflow: hidden; border: 1px solid #c6d9e6; border-radius: 16px 0 0 16px;
+  box-shadow: 0 18px 50px rgba(25,63,96,.12), inset 0 1px rgba(255,255,255,.5);
+  animation: map-enter .7s both;
+}
+.map-canvas::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(33,93,136,.08) 100%);
+}
+.map-heading {
+  position: absolute; z-index: 2; top: 22px; left: 22px; display: flex; flex-direction: column;
+  padding: 15px 18px 16px; border: 1px solid rgba(255,255,255,.8); border-radius: 13px;
+  background: rgba(249,252,255,.9); box-shadow: 0 10px 28px rgba(16,55,86,.1);
+  backdrop-filter: blur(12px); color: #173451;
+}
+.map-heading-kicker { display: flex; align-items: center; gap: 7px; font-size: 9px; font-weight: 800; letter-spacing: .14em; color: #4b7799; }
+.map-heading-dot { width: 6px; height: 6px; border-radius: 50%; background: #4691bc; }
+.map-heading strong { margin-top: 3px; font-family: 'Source Serif 4', Georgia, serif; font-size: clamp(22px, 2.4vw, 31px); letter-spacing: -.045em; line-height: 1.05; }
+.map-heading > span:last-child { margin-top: 7px; color: #66849e; font-size: 11px; }
+.map-heading-divider { padding: 0 5px; color: #a8bfd0; }
+.map-instruction {
+  position: absolute; z-index: 2; top: 18px; right: 60px; padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.6); border-radius: 8px;
+  background: rgba(249,252,255,.82); backdrop-filter: blur(8px); color: #42627d; font-size: 11px;
+}
+.map-instruction span { margin-left: 6px; color: #2272a5; }
+.map-legend { z-index: 2; max-width: calc(100% - 24px); padding: 12px 14px !important; border-radius: 12px; box-shadow: 0 12px 30px rgba(23,66,99,.15); }
+.map-legend > div:last-child { flex-wrap: wrap; }
+.map-legend .chip { padding: 3px 8px; }
+.maplibregl-ctrl-top-right { top: 60px !important; right: 12px !important; }
+.maplibregl-ctrl-group { border: 1px solid #c9dbe9; border-radius: 9px !important; overflow: hidden; }
+.insight-rail {
+  margin: 14px 14px 14px 0; width: clamp(350px, 27vw, 440px);
+  border: 1px solid #d8e4ed; border-radius: 0 16px 16px 0;
+  background: #fff; box-shadow: 10px 18px 42px rgba(25,63,96,.08);
+}
+.rail-intro {
+  padding: 25px 24px 21px; color: #eff8ff;
+  background: radial-gradient(320px 190px at 100% 0%, rgba(76,157,202,.38), transparent 75%), linear-gradient(135deg, #0c365a, #123e66 68%, #0d2c4d);
+}
+.rail-kicker { color: #9fcce6; font-size: 9px; font-weight: 700; letter-spacing: .15em; }
+.rail-intro h1 { margin: 8px 0 8px; font-family: 'Source Serif 4', Georgia, serif; font-size: 36px; font-weight: 600; letter-spacing: -.055em; line-height: .97; }
+.rail-intro h1 span { color: #82c9ee; }
+.rail-intro p { max-width: 260px; color: #bdd9eb; font-size: 11px; line-height: 1.45; }
+.insight-rail > section { padding: 19px 22px 23px; }
+.insight-rail > section h2 { font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; }
+.insight-rail .display { font-size: 46px; }
+.app-footer { min-height: 28px; background: #07172c !important; }
+@keyframes map-enter { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1100px) {
+  .warning-summary-label { display: none; }
+  .masthead-main { min-height: 68px; }
+  .control-deck { gap: 9px 16px; }
+  .layer-control { margin-left: 0; }
+  .insight-rail { width: 340px; }
+}
+@media (max-width: 800px) {
+  html, body, #root { height: auto; min-height: 100%; }
+  .app-shell { min-height: 100vh; height: auto !important; overflow: visible; }
+  .masthead-main { padding: 13px 17px; }
+  .brand-lockup { min-width: 0; }
+  .brand-subtitle { font-size: 9px; }
+  .archive-status { order: 3; }
+  .warning-summary { margin-left: auto; }
+  .app-nav { padding: 0 10px; }
+  .app-nav .tab { padding: 10px 12px; }
+  .control-deck { padding: 12px 15px; }
+  .date-control { order: 3; flex-basis: 100%; min-width: 0; }
+  .layer-control { order: 4; max-width: 100%; overflow-x: auto; }
+  .workspace { flex-direction: column; min-height: 0; }
+  .map-stage { flex: none; height: min(72vh, 620px); padding: 12px; }
+  .map-canvas { border-radius: 15px; }
+  .insight-rail { width: auto; margin: 0 12px 15px; border-radius: 15px; overflow: visible; }
+}
+@media (max-width: 520px) {
+  .masthead-main { gap: 11px; }
+  .brand-name { font-size: 20px; }
+  .warning-summary { order: 4; width: 100%; justify-content: space-between; }
+  .warning-summary-label { display: block; }
+  .archive-status { margin-left: auto; }
+  .status-qualifier { display: none; }
+  .control-deck .field { width: 124px; }
+  .map-stage { height: 500px; }
+  .map-heading { top: 12px; left: 12px; padding: 10px 12px; }
+  .map-heading strong { font-size: 21px; }
+  .map-instruction { display: none; }
+  .maplibregl-ctrl-top-right { top: 12px !important; }
+  .map-legend { bottom: 10px; left: 10px; padding: 9px !important; }
+  .map-legend .chip { font-size: 9px; }
+  .rail-intro { padding: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

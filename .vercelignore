@@ -1,0 +1,44 @@
+# Keep the deployment upload to what the API actually reads at request time.
+# Everything here is either an offline input, an offline output, or a local
+# artefact -- none of it is touched by a request handler.
+
+# Raw and intermediate ingest data. data/raw/_cache alone is 2,000+ Open-Meteo
+# responses; none of it is read at serve time.
+data/raw/
+data/interim/
+
+# The unsimplified boundary file is 28 MB. The API serves
+# districts_simplified.geojson (1.1 MB) and only falls back to this one
+# locally, so shipping it would cost 28 MB of a 250 MB function for nothing.
+data/static/districts.geojson
+data/static/*.bak
+
+# Trained model artefacts: loaded by the training and batch-prediction steps,
+# not by the API. Predictions are precomputed into data/processed.
+models/
+artifacts/
+runs/
+
+# results/final IS served -- /verification and /atlas read the frozen held-out
+# CSVs from there, so it must ship (32 KB). The other two are plotting output.
+results/figures/
+results/tables/
+
+# Raw IMD NetCDF dropped at the project root; ingest input only, 76 MB.
+RF25_ind*.nc
+
+# Local development
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+node_modules/
+frontend/dist/
+frontend/node_modules/
+logs/
+notebooks/
+tests/
+docs/
+scripts/

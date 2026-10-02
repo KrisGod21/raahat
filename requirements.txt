@@ -1,0 +1,32 @@
+# Runtime dependencies for the DEPLOYED API only (Vercel reads this file).
+#
+# This is deliberately NOT the development environment. A Vercel serverless
+# function gets 250 MB unzipped and the training stack does not come close to
+# fitting: pyarrow is 84 MB, scikit-learn plus its scipy dependency are 162 MB,
+# and torch is measured in gigabytes. None of the three executes in a request
+# handler -- they belong to ingest, training and schema validation.
+#
+# raahat.contract imports pyarrow lazily and raahat.models.analogs imports
+# sklearn inside fit(), so the API imports cleanly with all of them absent.
+# That was verified by blocking those modules at import time. If you ever add
+# a top-level import of one, local development stays green and the DEPLOYED
+# function starts failing at cold start -- so re-run that check:
+#
+#     python -c "import sys; sys.path.insert(0,'src'); \
+#       [sys.meta_path.insert(0, type('B',(),{'find_module':lambda s,n,p=None: s if n.split('.')[0] in ('pyarrow','sklearn','scipy','lightgbm','torch') else None,'load_module':lambda s,n: (_ for _ in ()).throw(ImportError(n))})())]; \
+#       import raahat.api.main; print('slim import OK')"
+#
+# Versions are pinned to what this project is developed and tested against,
+# so the deployed function cannot drift from local behaviour. Measured bundle:
+# ~149 MB of dependencies (pandas 65, duckdb 37, numpy 32, FastAPI stack 11)
+# plus ~25 MB of Parquet and boundaries, against the 250 MB limit.
+#
+# Install the full development environment from pyproject.toml instead:
+#     pip install -e .
+
+fastapi==0.117.1
+pydantic==2.11.9
+duckdb==1.5.5
+pandas==2.3.2
+numpy==2.5.2
+PyYAML==6.0.2
