@@ -27,14 +27,50 @@ interface Props {
   fading: boolean
   date?: string
   lead: number
+  layer: string
 }
 
 /** A district we hold no prediction for. Deliberately lighter than the sea. */
 const NO_DATA = '#EFF3F7'
 
-export function DistrictMap({ geojson, values, selected, onSelect, fading, date, lead }: Props) {
+const RAIN = ['#c9e1ee', '#a0cde3', '#79b9da', '#418fb9', '#20678f', '#124969']
+const PROB = ['#c9e1ee', '#a4d0e6', '#77b7d9', '#4e9dc6', '#155d8c']
+const CHANGE = ['#a4612a', '#d3a377', '#f1e7dc', '#dcecf3', '#83bddc', '#1b729e']
+
+const legendFor = (layer: string) => {
+  if (layer === 'corrected' || layer === 'raw') return {
+    title: `${layer === 'raw' ? 'Raw' : 'Corrected'} rainfall · mm`,
+    items: ['<10', '10–25', '25–50', '50–100', '100–200', '≥200'].map((label, i) => ({ label, colour: RAIN[i] })),
+  }
+  if (layer === 'delta') return {
+    title: 'Correction from raw · mm',
+    items: ['<−20', '−20 to −5', 'near 0', '+5 to +20', '+20 to +50', '≥+50'].map((label, i) => ({ label, colour: CHANGE[i] })),
+  }
+  if (layer === 'p64') return {
+    title: 'Chance of >64.5 mm',
+    items: ['<10%', '10–25%', '25–50%', '50–75%', '≥75%'].map((label, i) => ({ label, colour: PROB[i] })),
+  }
+  return {
+    title: 'Suggested warning',
+    items: ['No warning', 'Be updated', 'Be prepared', 'Take action'].map((label, i) => ({ label, colour: COLOUR_HEX[i as 0 | 1 | 2 | 3] })),
+  }
+}
+
+function colourFor(v: ForecastValue, layer: string) {
+  if (layer === 'colour') return COLOUR_HEX[v.colour_code] ?? NO_DATA
+  const x = v.value
+  if (x == null || !Number.isFinite(x)) return NO_DATA
+  if (layer === 'corrected' || layer === 'raw')
+    return RAIN[x < 10 ? 0 : x < 25 ? 1 : x < 50 ? 2 : x < 100 ? 3 : x < 200 ? 4 : 5]
+  if (layer === 'p64')
+    return PROB[x < .1 ? 0 : x < .25 ? 1 : x < .5 ? 2 : x < .75 ? 3 : 4]
+  return CHANGE[x < -20 ? 0 : x < -5 ? 1 : x < 5 ? 2 : x < 20 ? 3 : x < 50 ? 4 : 5]
+}
+
+export function DistrictMap({ geojson, values, selected, onSelect, fading, date, lead, layer }: Props) {
   const boxRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const paintedIds = useRef<Set<number>>(new Set())
   // A COUNTER, not a boolean. React StrictMode creates the map, tears it down
   // and creates another; effects that add layers must re-run for whichever map
   // is actually alive. Keying them off the map object in a ref does not work --
@@ -226,13 +262,18 @@ export function DistrictMap({ geojson, values, selected, onSelect, fading, date,
   useEffect(() => {
     const map = mapRef.current
     if (!map || !layered) return
+    const nextIds = new Set(values.map((v) => v.district_id))
+    for (const id of paintedIds.current) {
+      if (!nextIds.has(id)) map.setFeatureState({ source: 'districts', id }, { colour: NO_DATA })
+    }
     for (const v of values) {
       map.setFeatureState(
         { source: 'districts', id: v.district_id },
-        { colour: COLOUR_HEX[v.colour_code] ?? NO_DATA },
+        { colour: colourFor(v, layer) },
       )
     }
-  }, [ready, layered, values])
+    paintedIds.current = nextIds
+  }, [ready, layered, values, layer])
 
   useEffect(() => {
     const map = mapRef.current
@@ -265,22 +306,20 @@ export function DistrictMap({ geojson, values, selected, onSelect, fading, date,
           </p>
         </div>
       )}
-      {/* The only place besides the district panel where the four IMD colours
-          appear at full strength -- this legend is what gives them meaning. */}
       <div className="panel map-legend absolute bottom-3 left-3 px-3 py-2 text-xs"
            style={{ background: 'rgba(255,255,255,.96)', backdropFilter: 'blur(6px)' }}>
         <div className="mb-1.5 text-[11px] font-semibold" style={{ color: 'var(--accent-deep)' }}>
-          Suggested warning
+          {legendFor(layer).title}
         </div>
         <div className="flex gap-2">
-          {['No warning', 'Be updated', 'Be prepared', 'Take action'].map((label, i) => (
+          {legendFor(layer).items.map(({ label, colour }) => (
             <span key={label} className="chip"
                   style={{
-                    background: COLOUR_HEX[i as 0 | 1 | 2 | 3] + '1C',
+                    background: colour + '25',
                     color: 'var(--ink)',
                   }}>
               <span className="inline-block h-2.5 w-2.5 rounded-[3px]"
-                    style={{ background: COLOUR_HEX[i as 0 | 1 | 2 | 3] }} />
+                    style={{ background: colour }} />
               {label}
             </span>
           ))}

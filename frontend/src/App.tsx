@@ -380,7 +380,7 @@ export default function App() {
           <>
             <div className="map-stage min-w-0 flex-1">
               <DistrictMap geojson={geo} values={values} selected={selected}
-                           onSelect={onSelect} fading={fading} date={date} lead={lead} />
+                           onSelect={onSelect} fading={fading} date={date} lead={lead} layer={layer} />
             </div>
             <aside className="insight-rail w-[25rem] shrink-0 overflow-y-auto">
               <div className="rail-intro">
