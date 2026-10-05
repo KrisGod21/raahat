@@ -15,7 +15,6 @@ data/static/*.bak
 
 # Trained model artefacts: loaded by the training and batch-prediction steps,
 # not by the API. Predictions are precomputed into data/processed.
-models/
 artifacts/
 runs/
 

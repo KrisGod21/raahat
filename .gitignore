@@ -24,7 +24,7 @@ frontend/public/verification.json
 data/raw/
 data/interim/
 data/static/districts.geojson
-models/
+/models/
 artifacts/
 runs/
 RF25_ind*.nc
