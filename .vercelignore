@@ -28,6 +28,10 @@ results/tables/
 RF25_ind*.nc
 
 # Local development
+# Vercel must install the slim runtime requirements.txt. The root
+# pyproject.toml also lists offline training packages that cannot fit in a
+# Python function bundle, so do not upload it to the deployment builder.
+pyproject.toml
 .venv/
 venv/
 __pycache__/
